@@ -60,22 +60,41 @@ struct SearchView: View {
                     
                     ForEach(places, id: \.self) { place in
                         
-                        HStack(spacing:15) {
+                        Button {
                             
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(.gray)
+                            if let coordinate = place.location?.coordinate {
+                                
+                                locationManager.pickedLocation = .init(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                                locationManager.mapView.region = .init(center: coordinate, latitudinalMeters: 1000, longitudinalMeters: 1000)
+                                
+                                locationManager.addDraggablePin(coordinate: coordinate)
+                                locationManager.updatePlacemark(location: .init(latitude: coordinate.latitude, longitude: coordinate.longitude))
+                            }
                             
-                            VStack(alignment: .leading, spacing: 6) {
+                            //跳转到地图
+                            navigationTag = "MAPVIEW"
+                            
+                        } label: {
+                        
+                            HStack(spacing:15) {
                                 
-                                Text(place.name ?? "")
-                                    .font(.title3.bold())
-                                
-                                Text(place.locality ?? "")
-                                    .font(.caption)
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.title2)
                                     .foregroundColor(.gray)
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    
+                                    Text(place.name ?? "")
+                                        .font(.title3.bold())
+                                        .foregroundColor(.primary)
+                                    
+                                    Text(place.locality ?? "")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
                             }
                         }
+
                     }
                 }
                 .listStyle(.plain)
@@ -88,10 +107,13 @@ struct SearchView: View {
                         locationManager.mapView.region = .init(center: coordinate, latitudinalMeters: 1000, longitudinalMeters: 1000)
                         
                         locationManager.addDraggablePin(coordinate: coordinate)
+                        locationManager.updatePlacemark(location: .init(latitude: coordinate.latitude, longitude: coordinate.longitude))
+                        
+                        //跳转到地图
+                        navigationTag = "MAPVIEW"
                     }
                     
-                    //跳转到地图
-                    navigationTag = "MAPVIEW"
+                    
                     
                 } label: {
                 
@@ -121,6 +143,7 @@ struct SearchView: View {
                 
                 MapViewSelection()
                     .environmentObject(locationManager)
+                    .navigationBarHidden(true)
             } label: {
                 
             }
@@ -141,6 +164,9 @@ struct SearchView_Previews: PreviewProvider {
 struct MapViewSelection: View {
     
     @EnvironmentObject var locationManager: LocationManager
+    
+    @Environment(\.dismiss) var dismiss
+    
     var body: some View {
         
         ZStack {
@@ -148,6 +174,23 @@ struct MapViewSelection: View {
             MapViewHelper()
                 .environmentObject(locationManager)
                 .ignoresSafeArea()
+            
+            Button {
+                
+                dismiss()
+            } label: {
+                
+                Image(systemName: "chevron.left")
+                    .font(.title2.bold())
+                    .foregroundColor(.primary)
+                    .frame(width: 50, height: 50)
+                    .background {
+                        Color.red
+                    }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
             
             //展示 大头针定位信息
             if let place = locationManager.pickedPlaceMark {
@@ -189,7 +232,7 @@ struct MapViewSelection: View {
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     .fill(.green)
                             }
-                            .overlay{
+                            .overlay(alignment: .trailing){
                                 
                                 Image(systemName: "arrow.right")
                                     .font(.title3.bold())
@@ -205,11 +248,18 @@ struct MapViewSelection: View {
                     
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(.white)
-//                        .ignoresSafeArea()
+                        .ignoresSafeArea()
                 }
                 .frame(maxHeight:.infinity, alignment: .bottom)
             }
             
+        }
+        .onDisappear {
+            
+            locationManager.pickedLocation = nil
+            locationManager.pickedPlaceMark = nil
+            
+            locationManager.mapView.removeAnnotations(locationManager.mapView.annotations)
         }
     }
 }
